@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hostal Premier - Gestión de Huéspedes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Librería SheetJS para exportar a Excel correctamente -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+    </style>
+</head>
+<body class="text-gray-800 h-screen flex flex-col md:flex-row overflow-hidden">
+
+    <!-- Pantalla de Login -->
+    <div id="loginOverlay" class="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center p-4">
+        <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-gray-100">
+            <div class="text-center mb-8">
+                <h1 class="text-2xl font-bold text-blue-600">Hostal Premier</h1>
+                <p class="text-sm text-gray-500 mt-1">Ingrese sus credenciales para acceder</p>
+            </div>
+            <form id="loginForm" class="space-y-5">
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Usuario</label>
+                    <input type="text" id="loginUser" required class="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="stefany">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-600 mb-1">Contraseña</label>
+                    <input type="password" id="loginPass" required class="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="••••••">
+                </div>
+                <div id="loginError" class="text-red-500 text-sm hidden text-center font-medium">Usuario o contraseña incorrectos</div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-colors shadow-sm">
+                    Iniciar Sesión
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Sidebar / Menú de Navegación -->
+    <aside class="w-full md:w-64 bg-slate-900 text-white flex flex-col">
+        <div class="p-6 text-center border-b border-slate-700">
+            <h1 class="text-2xl font-bold text-blue-400">Hostal Premier</h1>
+            <p class="text-xs text-slate-400 mt-1">Panel de Administración</p>
+        </div>
+        <nav class="flex-1 p-4 space-y-2">
+            <button onclick="switchTab('registro')" id="btn-registro" class="w-full text-left px-4 py-3 bg-blue-600 rounded-lg transition-colors font-medium">Registro Actual</button>
+            <button onclick="switchTab('resumen')" id="btn-resumen" class="w-full text-left px-4 py-3 hover:bg-slate-800 rounded-lg transition-colors font-medium">Resumen Diario</button>
+            <button onclick="switchTab('mensual')" id="btn-mensual" class="w-full text-left px-4 py-3 hover:bg-slate-800 rounded-lg transition-colors font-medium">Reporte Mensual</button>
+        </nav>
+        <div class="p-4 border-t border-slate-800">
+            <button onclick="logout()" class="w-full bg-slate-800 hover:bg-slate-700 text-red-400 text-sm py-2 rounded-lg transition-colors font-medium">Cerrar Sesión</button>
+        </div>
+    </aside>
+
+    <!-- Contenido Principal -->
+    <main class="flex-1 overflow-y-auto p-6 md:p-10">
+        
+        <!-- Pestaña 1: Registro Actual -->
+        <section id="registro" class="tab-content active">
+            <div class="flex flex-col xl:flex-row gap-8">
+                <!-- Formulario -->
+                <div class="w-full xl:w-1/3 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <h2 class="text-xl font-bold mb-6">Nuevo Huésped</h2>
+                    <form id="guestForm" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">Nombre Completo</label>
+                            <input type="text" id="name" required class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        
+                        <div class="flex gap-4">
+                            <div class="w-1/2">
+                                <label class="block text-sm font-medium text-gray-600 mb-1">Doc. Identidad</label>
+                                <input type="text" id="docId" required class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                            <div class="w-1/2">
+                                <label class="block text-sm font-medium text-gray-600 mb-1">Nacionalidad</label>
+                                <input type="text" id="nationality" required class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-600 mb-1">Lugar de Procedencia</label>
+                            <input type="text" id="origin" required class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+
+                        <div class="flex gap-4">
+                            <div class="w-1/2">
+                                <label class="block text-sm font-medium text-gray-600 mb-1">N° Hab.</label>
+                                <input type="text" id="room" required class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                            <div class="w-1/2">
+                                <label class="block text-sm font-medium text-gray-600 mb-1">Fecha de Ingreso</label>
+                                <input type="date" id="date" required class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                        </div>
+
+                        <div class="flex gap-4">
+                            <div class="w-2/3">
+                                <label class="block text-sm font-medium text-gray-600 mb-1">Tipo de Habitación</label>
+                                <select id="type" required class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                                    <option value="" disabled selected>Seleccione...</option>
+                                    <option value="Simple individual">Simple individual (S/ 30)</option>
+                                    <option value="Simple doble">Simple doble (S/ 60)</option>
+                                    <option value="Matrimonial">Matrimonial (S/ 40)</option>
+                                    <option value="Matrimonial doble">Matrimonial doble (S/ 80)</option>
+                                    <option value="Triple">Triple (S/ 120)</option>
+                                </select>
+                            </div>
+                            <div class="w-1/3">
+                                <label class="block text-sm font-medium text-gray-600 mb-1">Costo (S/)</label>
+                                <input type="number" id="cost" required min="0" step="0.10" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition-colors mt-2">
+                            Registrar Huésped
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Tabla Activos -->
+                <div class="w-full xl:w-2/3 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <h2 class="text-xl font-bold mb-6">Huéspedes en el Hotel</h2>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-50 text-gray-600 text-sm border-b">
+                                    <th class="p-3 font-semibold">Hab.</th>
+                                    <th class="p-3 font-semibold">Nombre</th>
+                                    <th class="p-3 font-semibold">Documento</th>
+                                    <th class="p-3 font-semibold">Tipo</th>
+                                    <th class="p-3 font-semibold">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="activeGuestsTable" class="text-sm">
+                                <!-- Se llena dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Pestaña 2: Resumen Diario -->
+        <section id="resumen" class="tab-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Resumen de Hoy (<span id="todayDateLabel"></span>)</h2>
+                <button onclick="exportDailyToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center gap-2 shadow-sm">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    Descargar Resumen Excel
+                </button>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-green-500">
+                    <p class="text-xs text-gray-500 font-medium">Ingresos del Día</p>
+                    <p class="text-2xl font-bold text-gray-800 mt-1">S/ <span id="dailyIncome">0.00</span></p>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-blue-500">
+                    <p class="text-xs text-gray-500 font-medium">Hab. Ocupadas Hoy</p>
+                    <p class="text-2xl font-bold text-gray-800 mt-1"><span id="dailyOccupied">0</span></p>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                    <p class="text-xs text-gray-500 font-medium">Simples (Ind/Doble)</p>
+                    <p class="text-xl font-bold text-gray-800 mt-1"><span id="countSimple">0</span></p>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                    <p class="text-xs text-gray-500 font-medium">Matrimoniales (Nor/Doble)</p>
+                    <p class="text-xl font-bold text-gray-800 mt-1"><span id="countMatri">0</span></p>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+                    <p class="text-xs text-gray-500 font-medium">Triples</p>
+                    <p class="text-xl font-bold text-gray-800 mt-1"><span id="countTriple">0</span></p>
+                </div>
+            </div>
+
+            <!-- Tabla Detallada del Día -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <h3 class="text-lg font-bold mb-4 text-gray-700">Detalle de Ingresos del Día</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 text-gray-600 text-xs border-b">
+                                <th class="p-2 font-semibold">Hab.</th>
+                                <th class="p-2 font-semibold">Nombre</th>
+                                <th class="p-2 font-semibold">Documento</th>
+                                <th class="p-2 font-semibold">Nacionalidad</th>
+                                <th class="p-2 font-semibold">Procedencia</th>
+                                <th class="p-2 font-semibold">Tipo</th>
+                                <th class="p-2 font-semibold">Costo</th>
+                                <th class="p-2 font-semibold">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dailyDetailTable" class="text-xs">
+                            <!-- Se llena dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Pestaña 3: Reporte Mensual -->
+        <section id="mensual" class="tab-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Reporte del Mes (<span id="monthLabel"></span>)</h2>
+                <button onclick="exportToExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center gap-2 shadow-sm">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    Exportar a Excel (Mensual)
+                </button>
+            </div>
+            
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 text-gray-600 text-xs border-b">
+                                <th class="p-2 font-semibold">Hab.</th>
+                                <th class="p-2 font-semibold">Nombre</th>
+                                <th class="p-2 font-semibold">Documento</th>
+                                <th class="p-2 font-semibold">Nacionalidad</th>
+                                <th class="p-2 font-semibold">Procedencia</th>
+                                <th class="p-2 font-semibold">Tipo</th>
+                                <th class="p-2 font-semibold">Costo</th>
+                                <th class="p-2 font-semibold">Ingreso</th>
+                                <th class="p-2 font-semibold">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody id="monthlyTable" class="text-xs">
+                            <!-- Se llena dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal Personalizado -->
+    <div id="customModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white p-6 rounded-2xl shadow-xl w-full max-w-sm text-center">
+            <h3 id="modalTitle" class="text-lg font-bold text-gray-800 mb-2">Mensaje</h3>
+            <p id="modalMessage" class="text-sm text-gray-600 mb-6">¿Estás seguro?</p>
+            <div id="modalButtons" class="flex gap-3 justify-center">
+                <button id="modalBtnCancel" onclick="closeModal()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-xl text-sm font-medium">Cancelar</button>
+                <button id="modalBtnConfirm" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-medium">Aceptar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Autenticación
+        const validUser = "stefany";
+        const validPass = "210926";
+
+        if(localStorage.getItem('hostalAuth') === 'true') {
+            document.getElementById('loginOverlay').style.display = 'none';
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const u = document.getElementById('loginUser').value;
+            const p = document.getElementById('loginPass').value;
+            if(u === validUser && p === validPass) {
+                localStorage.setItem('hostalAuth', 'true');
+                document.getElementById('loginOverlay').style.display = 'none';
+                document.getElementById('loginError').classList.add('hidden');
+            } else {
+                document.getElementById('loginError').classList.remove('hidden');
+            }
+        });
+
+        function logout() {
+            localStorage.removeItem('hostalAuth');
+            document.getElementById('loginOverlay').style.display = 'flex';
+            document.getElementById('loginUser').value = '';
+            document.getElementById('loginPass').value = '';
+        }
+
+        // Obtener fecha local exacta (YYYY-MM-DD)
+        function getLocalDateString(d = new Date()) {
+            const offset = d.getTimezoneOffset();
+            const localDate = new Date(d.getTime() - (offset*60*1000));
+            return localDate.toISOString().split('T')[0];
+        }
+
+        document.getElementById('date').value = getLocalDateString();
+
+        // Precios automáticos
+        const roomPrices = {
+            'Simple individual': 30,
+            'Simple doble': 60,
+            'Matrimonial': 40,
+            'Matrimonial doble': 80,
+            'Triple': 120
+        };
+
+        document.getElementById('type').addEventListener('change', function() {
+            const selectedType = this.value;
+            if (roomPrices[selectedType]) {
+                document.getElementById('cost').value = roomPrices[selectedType];
+            }
+        });
+
+        // Inicializar array vacío limpio
+        let guests = JSON.parse(localStorage.getItem('hostalPremierData')) || [];
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('nav button').forEach(btn => {
+                if(btn.id.startsWith('btn-')) {
+                    btn.classList.remove('bg-blue-600');
+                    btn.classList.add('hover:bg-slate-800');
+                }
+            });
+            document.getElementById(tabId).classList.add('active');
+            const activeBtn = document.getElementById(`btn-${tabId}`);
+            if(activeBtn) {
+                activeBtn.classList.remove('hover:bg-slate-800');
+                activeBtn.classList.add('bg-blue-600');
+            }
+            renderUI();
+        }
+
+        document.getElementById('guestForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const newGuest = {
+                id: Date.now(),
+                name: document.getElementById('name').value,
+                docId: document.getElementById('docId').value,
+                nationality: document.getElementById('nationality').value,
+                origin: document.getElementById('origin').value,
+                room: document.getElementById('room').value,
+                type: document.getElementById('type').value,
+                cost: parseFloat(document.getElementById('cost').value),
+                date: document.getElementById('date').value,
+                status: 'Activo'
+            };
+            guests.push(newGuest);
+            saveData();
+            this.reset();
+            document.getElementById('date').value = getLocalDateString();
+            renderUI();
+        });
+
+        function checkoutGuest(id) {
+            showModal("Dar de Alta", "¿Estás seguro de que este huésped ya se retiró?", () => {
+                const guest = guests.find(g => g.id === id);
+                if(guest) {
+                    guest.status = 'Finalizado';
+                    saveData();
+                    renderUI();
+                }
+                closeModal();
+            });
+        }
+
+        function saveData() {
+            localStorage.setItem('hostalPremierData', JSON.stringify(guests));
+        }
+
+        function renderUI() {
+            const today = getLocalDateString();
+            const currentMonth = today.slice(0, 7);
+            
+            document.getElementById('todayDateLabel').innerText = today;
+            document.getElementById('monthLabel').innerText = currentMonth;
+
+            const activeGuestsTable = document.getElementById('activeGuestsTable');
+            const monthlyTable = document.getElementById('monthlyTable');
+            const dailyDetailTable = document.getElementById('dailyDetailTable');
+            
+            activeGuestsTable.innerHTML = '';
+            monthlyTable.innerHTML = '';
+            dailyDetailTable.innerHTML = '';
+
+            let dailyIncome = 0;
+            let occupiedToday = 0;
+            let countSimple = 0, countMatri = 0, countTriple = 0;
+
+            guests.forEach(guest => {
+                const guestMonth = guest.date.slice(0, 7);
+
+                // Tabla Registro Actual (Activos)
+                if(guest.status === 'Activo') {
+                    activeGuestsTable.innerHTML += `
+                        <tr class="border-b hover:bg-gray-50">
+                            <td class="p-3 font-medium">${guest.room}</td>
+                            <td class="p-3 text-gray-800">${guest.name}</td>
+                            <td class="p-3 text-gray-500">${guest.docId}</td>
+                            <td class="p-3"><span class="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs border">${guest.type}</span></td>
+                            <td class="p-3">
+                                <button onclick="checkoutGuest(${guest.id})" class="text-xs bg-red-100 text-red-600 px-3 py-1 rounded hover:bg-red-200 transition-colors font-medium">Dar Salida</button>
+                            </td>
+                        </tr>
+                    `;
+                }
+
+                // Tabla Reporte Mensual
+                if(guestMonth === currentMonth) {
+                    const statusClass = guest.status === 'Activo' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600';
+                    monthlyTable.innerHTML += `
+                        <tr class="border-b hover:bg-gray-50">
+                            <td class="p-2">${guest.room}</td>
+                            <td class="p-2 font-medium">${guest.name}</td>
+                            <td class="p-2">${guest.docId}</td>
+                            <td class="p-2">${guest.nationality}</td>
+                            <td class="p-2">${guest.origin}</td>
+                            <td class="p-2">${guest.type}</td>
+                            <td class="p-2">S/ ${guest.cost.toFixed(2)}</td>
+                            <td class="p-2">${guest.date}</td>
+                            <td class="p-2"><span class="px-2 py-1 rounded text-xs border ${statusClass}">${guest.status}</span></td>
+                        </tr>
+                    `;
+                }
+
+                // Estadísticas y Detalle Diario
+                if(guest.date === today) {
+                    dailyIncome += guest.cost;
+                    occupiedToday++;
+                    
+                    if(guest.type.includes('Simple')) countSimple++;
+                    else if(guest.type.includes('Matrimonial')) countMatri++;
+                    else if(guest.type === 'Triple') countTriple++;
+
+                    const statusClass = guest.status === 'Activo' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600';
+                    dailyDetailTable.innerHTML += `
+                        <tr class="border-b hover:bg-gray-50">
+                            <td class="p-2 font-medium">${guest.room}</td>
+                            <td class="p-2">${guest.name}</td>
+                            <td class="p-2">${guest.docId}</td>
+                            <td class="p-2">${guest.nationality}</td>
+                            <td class="p-2">${guest.origin}</td>
+                            <td class="p-2">${guest.type}</td>
+                            <td class="p-2 font-semibold">S/ ${guest.cost.toFixed(2)}</td>
+                            <td class="p-2"><span class="px-2 py-1 rounded text-xs border ${statusClass}">${guest.status}</span></td>
+                        </tr>
+                    `;
+                }
+            });
+
+            document.getElementById('dailyIncome').innerText = dailyIncome.toFixed(2);
+            document.getElementById('dailyOccupied').innerText = occupiedToday;
+            document.getElementById('countSimple').innerText = countSimple;
+            document.getElementById('countMatri').innerText = countMatri;
+            document.getElementById('countTriple').innerText = countTriple;
+        }
+
+        // Modales personalizados
+        function showModal(title, message, onConfirm) {
+            document.getElementById('modalTitle').innerText = title;
+            document.getElementById('modalMessage').innerText = message;
+            const btnConfirm = document.getElementById('modalBtnConfirm');
+            const newBtn = btnConfirm.cloneNode(true);
+            btnConfirm.parentNode.replaceChild(newBtn, btnConfirm);
+            newBtn.addEventListener('click', onConfirm);
+            document.getElementById('customModal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('customModal').classList.add('hidden');
+        }
+
+        // Exportar a Excel (Mensual con SheetJS)
+        function exportToExcel() {
+            const currentMonth = getLocalDateString().slice(0, 7);
+            const monthlyGuests = guests.filter(g => g.date.slice(0, 7) === currentMonth);
+
+            if(monthlyGuests.length === 0) {
+                showModal("Aviso", "No hay registros en este mes para exportar.", closeModal);
+                return;
+            }
+
+            const dataToExport = monthlyGuests.map(g => ({
+                "Habitación": g.room,
+                "Nombre Completo": g.name,
+                "Documento": g.docId,
+                "Nacionalidad": g.nationality,
+                "Procedencia": g.origin,
+                "Tipo de Habitación": g.type,
+                "Costo (S/)": g.cost,
+                "Fecha Ingreso": g.date,
+                "Estado": g.status
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Reporte Mensual");
+            XLSX.writeFile(workbook, `Reporte_Hostal_Premier_${currentMonth}.xlsx`);
+        }
+
+        // Exportar Resumen Diario con 2 pestañas (Estadísticas y Detalle con SheetJS)
+        function exportDailyToExcel() {
+            const today = getLocalDateString();
+            const dailyGuests = guests.filter(g => g.date === today);
+
+            if(dailyGuests.length === 0) {
+                showModal("Aviso", "No hay registros para el día de hoy.", closeModal);
+                return;
+            }
+
+            let dailyIncome = dailyGuests.reduce((acc, curr) => acc + curr.cost, 0);
+            let countSimple = dailyGuests.filter(g => g.type.includes('Simple')).length;
+            let countMatri = dailyGuests.filter(g => g.type.includes('Matrimonial')).length;
+            let countTriple = dailyGuests.filter(g => g.type === 'Triple').length;
+
+            const statsData = [
+                { "Métrica": "Fecha del Reporte", "Valor": today },
+                { "Métrica": "Total Ingresos del Día (S/)", "Valor": dailyIncome },
+                { "Métrica": "Habitaciones Ocupadas Hoy", "Valor": dailyGuests.length },
+                { "Métrica": "Simples (Ind/Doble)", "Valor": countSimple },
+                { "Métrica": "Matrimoniales (Nor/Doble)", "Valor": countMatri },
+                { "Métrica": "Triples", "Valor": countTriple }
+            ];
+
+            const detailData = dailyGuests.map(g => ({
+                "Habitación": g.room,
+                "Nombre Completo": g.name,
+                "Documento": g.docId,
+                "Nacionalidad": g.nationality,
+                "Procedencia": g.origin,
+                "Tipo de Habitación": g.type,
+                "Costo (S/)": g.cost,
+                "Estado": g.status
+            }));
+
+            const wb = XLSX.utils.book_new();
+            const wsStats = XLSX.utils.json_to_sheet(statsData);
+            const wsDetail = XLSX.utils.json_to_sheet(detailData);
+
+            XLSX.utils.book_append_sheet(wb, wsStats, "Estadisticas");
+            XLSX.utils.book_append_sheet(wb, wsDetail, "Detalle_Huespedes");
+
+            XLSX.writeFile(wb, `Resumen_Diario_Hostal_Premier_${today}.xlsx`);
+        }
+
+        // Renderizado inicial
+        renderUI();
+    </script>
+</body>
+</html>
